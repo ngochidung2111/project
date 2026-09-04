@@ -3,6 +3,8 @@ package com.example.jira_clone.service;
 import com.example.jira_clone.dto.auth.AuthResponse;
 import com.example.jira_clone.dto.auth.LoginRequest;
 import com.example.jira_clone.dto.auth.SignupRequest;
+import com.example.jira_clone.dto.auth.UpdateProfileRequest;
+import com.example.jira_clone.dto.auth.ChangePasswordRequest;
 import com.example.jira_clone.dto.auth.UserDto;
 import com.example.jira_clone.entity.Role;
 import com.example.jira_clone.entity.UserRole;
@@ -86,6 +88,31 @@ public class AuthService {
         User user = userService.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return toUserDto(user);
+    }
+
+    @Transactional
+    public UserDto updateProfile(String email, UpdateProfileRequest request) {
+        User user = userService.findByEmail(normalizeEmail(email))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setFullName(request.fullName());
+        user.setAvatarUrl(request.avatarUrl());
+
+        User savedUser = userService.save(user);
+        return toUserDto(savedUser);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userService.findByEmail(normalizeEmail(email))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(request.oldPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid old password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userService.save(user);
     }
 
     private AuthResponse toResponse(User user, String token) {
